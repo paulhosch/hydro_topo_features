@@ -1,176 +1,256 @@
-"""Main pipeline for computing and visualizing hydro-topological features."""
+"""Main pipeline for processing hydro-topological features."""
 
+import os
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union, List
 
-from .processing import prepare_data, condition_dem, derive_products
-from .visualization import plot_static_map, plot_interactive_map
 from . import config
+from .processing import prepare_data, burn_dem, derive_products
+from .visualization import static, interactive
 
 logger = logging.getLogger(__name__)
+
+def setup_directory_structure(output_path: Union[str, Path], site_id: str) -> Dict[str, Path]:
+    """
+    Set up the directory structure for outputs.
+    
+    Args:
+        output_path: Base path for all outputs
+        site_id: Unique identifier for the site
+        
+    Returns:
+        Dictionary of paths for different output types
+    """
+    # Convert to Path object if string
+    output_base = Path(output_path)
+    
+    # Create site directory
+    site_dir = output_base / site_id
+    
+    # Create dictionary of directories
+    dirs = {
+        "root": site_dir,
+        "raw": site_dir / config.DIRECTORY_STRUCTURE["RAW"],
+        "interim": site_dir / config.DIRECTORY_STRUCTURE["INTERIM"],
+        "processed": site_dir / config.DIRECTORY_STRUCTURE["PROCESSED"],
+        "figures": site_dir / config.DIRECTORY_STRUCTURE["FIGURES"],
+        "static_figures": site_dir / config.DIRECTORY_STRUCTURE["FIGURES"] / config.DIRECTORY_STRUCTURE["STATIC"],
+        "interactive_figures": site_dir / config.DIRECTORY_STRUCTURE["FIGURES"] / config.DIRECTORY_STRUCTURE["INTERACTIVE"]
+    }
+    
+    # Create all directories
+    for dir_path in dirs.values():
+        os.makedirs(dir_path, exist_ok=True)
+        
+    return dirs
 
 def run_pipeline(
     site_id: str,
     aoi_path: str,
     dem_tile_folder_path: str,
+    output_path: Optional[Union[str, Path]] = None,
     create_static_maps: bool = True,
-    create_interactive_map: bool = True,
-    feature_configs: Optional[Dict] = None
+    create_interactive_map: bool = True
 ) -> Dict[str, str]:
     """
-    Run the complete hydro-topological feature computation pipeline.
+    Run the complete pipeline for processing hydro-topological features.
     
     Args:
-        site_id (str): Unique identifier for the site
-        aoi_path (str): Path to AOI shapefile/geopackage
-        dem_tile_folder_path (str): Path to folder containing DEM tiles
-        create_static_maps (bool): Whether to create static maps
-        create_interactive_map (bool): Whether to create interactive map
-        feature_configs (dict, optional): Configuration overrides for features
-            Example:
-            {
-                'raw_dem': {'vmin': 0, 'vmax': 1000},
-                'osm_water': {'cmap': 'Blues'},
-                'hand': {'vmin': 0, 'vmax': 100},
-                'slope': {'vmin': 0, 'vmax': 45},
-                'edtw': {'vmin': 0, 'vmax': 1000}
-            }
-    
+        site_id: Unique identifier for the site
+        aoi_path: Path to AOI shapefile/geopackage
+        dem_tile_folder_path: Path to folder containing DEM tiles
+        output_path: Base path for all outputs (default: config.DEFAULT_OUTPUT_DIR)
+        create_static_maps: Whether to create static maps of the features
+        create_interactive_map: Whether to create an interactive map of all features
+        
     Returns:
-        dict: Dictionary containing paths to all outputs
+        Dictionary of output file paths
     """
-    logger.info(f"Starting pipeline for site: {site_id}")
+    # Set up output path
+    output_base = Path(output_path) if output_path else Path(config.DEFAULT_OUTPUT_DIR)
+    
+    # Setup directory structure
+    dirs = setup_directory_structure(output_base, site_id)
+    
+    logger.info(f"Running pipeline for site: {site_id}")
+    logger.info(f"Output directory: {dirs['root']}")
+    
+    # Dictionary to store output paths
     outputs = {}
     
-    # 1. Prepare input data
+    # Step 1: Prepare data (merge DEM tiles, extract OSM water)
     logger.info("Step 1: Preparing input data")
-    data_paths = prepare_data(
+    prepare_outputs = prepare_data.prepare_input_data(
         site_id=site_id,
         aoi_path=aoi_path,
-        dem_tile_folder_path=dem_tile_folder_path
+        dem_tile_folder_path=dem_tile_folder_path,
+        output_dirs=dirs
     )
-    outputs.update(data_paths)
+    outputs.update(prepare_outputs)
     
-    # 2. Condition DEM
-    logger.info("Step 2: Conditioning DEM")
-    conditioned_dem_path = condition_dem(
+    # Step 2: Burn streams into DEM
+    logger.info("Step 2: Burning streams into DEM")
+    burned_dem_path = burn_dem.burn_streams(
         site_id=site_id,
-        raw_dem=data_paths['raw_dem'],
-        osm_water_raster=data_paths['osm_water_raster']
+        raw_dem=outputs["raw_dem"],
+        osm_water_raster=outputs["osm_water_raster"],
+        output_dirs=dirs
     )
-    outputs['conditioned_dem'] = conditioned_dem_path
+    outputs["burned_dem"] = burned_dem_path
     
-    # 3. Compute features
-    logger.info("Step 3: Computing features")
-    
-    # HAND
+    # Step 3: Compute HAND
+    logger.info("Step 3: Computing HAND")
     hand_path = derive_products.get_osm_hand(
         site_id=site_id,
-        raw_dem=data_paths['raw_dem'],
-        osm_water_raster=data_paths['osm_water_raster'],
-        conditioned_dem=conditioned_dem_path
+        raw_dem=outputs["raw_dem"],
+        osm_water_raster=outputs["osm_water_raster"],
+        burned_dem=outputs["burned_dem"],
+        output_dirs=dirs
     )
-    outputs['hand'] = hand_path
+    outputs["hand"] = hand_path
     
-    # Slope
+    # Step 4: Compute slope
+    logger.info("Step 4: Computing slope")
     slope_path = derive_products.get_slope(
         site_id=site_id,
-        raw_dem=data_paths['raw_dem']
+        raw_dem=outputs["raw_dem"],
+        output_dirs=dirs
     )
-    outputs['slope'] = slope_path
+    outputs["slope"] = slope_path
     
-    # EDTW
+    # Step 5: Compute EDTW
+    logger.info("Step 5: Computing EDTW")
     edtw_path = derive_products.get_edtw(
         site_id=site_id,
-        osm_water_raster=data_paths['osm_water_raster']
+        osm_water_raster=outputs["osm_water_raster"],
+        output_dirs=dirs
     )
-    outputs['edtw'] = edtw_path
+    outputs["edtw"] = edtw_path
     
-    # 4. Create visualizations
+    # Step 6: Create visualizations
     if create_static_maps:
-        logger.info("Step 4a: Creating static maps")
-        
-        # Default configurations for each feature
-        default_configs = {
-            'raw_dem': {
-                'Name': 'Digital Elevation Model',
-                'Unit': 'meters',
-                'cmap': 'terrain'
-            },
-            'osm_water': {
-                'Name': 'OSM Water Features',
-                'Unit': None,
-                'cmap': 'Blues'
-            },
-            'hand': {
-                'Name': 'Height Above Nearest Drainage',
-                'Unit': 'meters',
-                'cmap': 'terrain'
-            },
-            'slope': {
-                'Name': 'Slope',
-                'Unit': config.SLOPE_PARAMS['units'],
-                'cmap': 'YlOrRd'
-            },
-            'edtw': {
-                'Name': 'Euclidean Distance to Water',
-                'Unit': config.EDTW_PARAMS['units'],
-                'cmap': 'YlGnBu'
-            }
-        }
-        
-        # Update with user configurations
-        if feature_configs:
-            for feature, cfg in feature_configs.items():
-                if feature in default_configs:
-                    default_configs[feature].update(cfg)
-        
-        # Create static maps
-        static_maps = {}
-        for feature, cfg in default_configs.items():
-            if feature in outputs:
-                map_path = plot_static_map(
-                    site_id=site_id,
-                    raster_path=outputs[feature],
-                    aoi_path=aoi_path,
-                    **cfg
-                )
-                static_maps[f"{feature}_static_map"] = map_path
+        logger.info("Step 6a: Creating static maps")
+        static_maps = create_static_visualizations(
+            site_id=site_id,
+            aoi_path=aoi_path,
+            raster_outputs=outputs,
+            output_dirs=dirs
+        )
         outputs.update(static_maps)
     
     if create_interactive_map:
-        logger.info("Step 4b: Creating interactive map")
-        
-        # Prepare feature configurations for interactive map
-        raster_paths = [outputs[f] for f in ['raw_dem', 'osm_water_raster', 'hand', 'slope', 'edtw']]
-        names = ['Digital Elevation Model', 'OSM Water Features', 'Height Above Nearest Drainage', 'Slope', 'Euclidean Distance to Water']
-        units = ['meters', None, 'meters', config.SLOPE_PARAMS['units'], config.EDTW_PARAMS['units']]
-        cmaps = ['terrain', 'Blues', 'terrain', 'YlOrRd', 'YlGnBu']
-        
-        # Get value ranges from feature configs if provided
-        vmin = []
-        vmax = []
-        if feature_configs:
-            for feature in ['raw_dem', 'osm_water', 'hand', 'slope', 'edtw']:
-                if feature in feature_configs and 'vmin' in feature_configs[feature]:
-                    vmin.append(feature_configs[feature]['vmin'])
-                    vmax.append(feature_configs[feature]['vmax'])
-                else:
-                    vmin.append(None)
-                    vmax.append(None)
-        
-        interactive_map = plot_interactive_map(
+        logger.info("Step 6b: Creating interactive map")
+        interactive_map = create_interactive_visualization(
             site_id=site_id,
-            raster_paths=raster_paths,
             aoi_path=aoi_path,
-            Name=names,
-            Unit=units,
-            cmap=cmaps,
-            vmin=vmin if vmin else None,
-            vmax=vmax if vmax else None
+            raster_outputs=outputs,
+            output_dirs=dirs
         )
-        outputs['interactive_map'] = interactive_map
+        outputs["interactive_map"] = interactive_map
     
-    logger.info("Pipeline completed successfully")
-    return outputs 
+    logger.info(f"Pipeline completed for site: {site_id}")
+    return outputs
+
+def create_static_visualizations(
+    site_id: str,
+    aoi_path: str,
+    raster_outputs: Dict[str, str],
+    output_dirs: Dict[str, Path]
+) -> Dict[str, str]:
+    """
+    Create static visualizations for all raster outputs.
+    
+    Args:
+        site_id: Unique identifier for the site
+        aoi_path: Path to AOI shapefile/geopackage
+        raster_outputs: Dictionary of raster output paths
+        output_dirs: Dictionary of output directories
+        
+    Returns:
+        Dictionary of static map paths
+    """
+    static_maps = {}
+    
+    # List of features to visualize
+    features = ["raw_dem", "burned_dem", "osm_water_raster", "hand", "slope", "edtw"]
+    
+    for feature in features:
+        if feature in raster_outputs:
+            # Get visualization config for this feature
+            feature_key = feature.replace("_raster", "")
+            vis_config = config.RASTER_VIS.get(feature_key, {})
+            
+            # Create static map
+            static_map_path = static.plot_static_map(
+                site_id=site_id,
+                raster_path=raster_outputs[feature],
+                aoi_path=aoi_path,
+                Name=vis_config.get("name", feature),
+                Unit=vis_config.get("unit", ""),
+                vmin=vis_config.get("vmin", None),
+                vmax=vis_config.get("vmax", None),
+                cmap=vis_config.get("cmap", "terrain"),
+                output_dirs=output_dirs
+            )
+            
+            static_maps[f"{feature}_static_map"] = static_map_path
+    
+    return static_maps
+
+def create_interactive_visualization(
+    site_id: str,
+    aoi_path: str,
+    raster_outputs: Dict[str, str],
+    output_dirs: Dict[str, Path]
+) -> str:
+    """
+    Create an interactive visualization with all raster outputs.
+    
+    Args:
+        site_id: Unique identifier for the site
+        aoi_path: Path to AOI shapefile/geopackage
+        raster_outputs: Dictionary of raster output paths
+        output_dirs: Dictionary of output directories
+        
+    Returns:
+        Path to interactive map
+    """
+    # List of features to include in interactive map
+    features = ["raw_dem", "osm_water_raster", "hand", "slope", "edtw"]
+    
+    # Collect paths, names, units, limits, and cmaps
+    raster_paths = []
+    names = []
+    units = []
+    vmins = []
+    vmaxs = []
+    cmaps = []
+    
+    for feature in features:
+        if feature in raster_outputs:
+            # Get visualization config for this feature
+            feature_key = feature.replace("_raster", "")
+            vis_config = config.RASTER_VIS.get(feature_key, {})
+            
+            raster_paths.append(raster_outputs[feature])
+            names.append(vis_config.get("name", feature))
+            units.append(vis_config.get("unit", ""))
+            vmins.append(vis_config.get("vmin", None))
+            vmaxs.append(vis_config.get("vmax", None))
+            cmaps.append(vis_config.get("cmap", "terrain"))
+    
+    # Create interactive map
+    interactive_map_path = interactive.plot_interactive_map(
+        site_id=site_id,
+        raster_paths=raster_paths,
+        aoi_path=aoi_path,
+        Name=names,
+        Unit=units,
+        vmin=vmins,
+        vmax=vmaxs,
+        cmap=cmaps,
+        output_dirs=output_dirs
+    )
+    
+    return interactive_map_path 

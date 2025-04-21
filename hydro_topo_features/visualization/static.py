@@ -3,6 +3,7 @@
 import os
 import logging
 from pathlib import Path
+from typing import Dict, Optional, Union
 import numpy as np
 import matplotlib.pyplot as plt
 import rasterio
@@ -35,62 +36,68 @@ def plot_static_map(
     scale_bar_unit: str = None,
     bbox_buffer: float = None,
     figsize: tuple = (12, 12),
-    dpi: int = None
+    dpi: int = None,
+    output_dirs: Optional[Dict[str, Path]] = None
 ) -> str:
     """
     Create a static map visualization of a raster dataset.
     
     Args:
-        site_id (str): Unique identifier for the site
-        raster_path (str): Path to the raster file to plot
-        aoi_path (str, optional): Path to the AOI shapefile/geopackage
-        cmap (str, optional): Matplotlib colormap name
-        vmin (float, optional): Minimum value for colormap
-        vmax (float, optional): Maximum value for colormap
-        Name (str, optional): Name of the feature for the title
-        Unit (str, optional): Unit for the colorbar label
-        aoi_color (str, optional): Color for AOI boundary
-        aoi_linestyle (str, optional): Line style for AOI boundary
-        aoi_linewidth (int, optional): Line width for AOI boundary
-        show_grid (bool, optional): Whether to show grid lines
-        show_lon_lat (bool, optional): Whether to show lon/lat labels
-        show_scale_bar (bool, optional): Whether to show scale bar
-        scale_bar_length (int, optional): Length of scale bar
-        scale_bar_color (str, optional): Color of scale bar
-        scale_bar_unit (str, optional): Unit for scale bar
-        bbox_buffer (float, optional): Buffer around data extent
-        figsize (tuple, optional): Figure size in inches
-        dpi (int, optional): Resolution for saved figure
+        site_id: Unique identifier for the site
+        raster_path: Path to the raster file to plot
+        aoi_path: Path to the AOI shapefile/geopackage
+        cmap: Matplotlib colormap name
+        vmin: Minimum value for colormap
+        vmax: Maximum value for colormap
+        Name: Name of the feature for the title
+        Unit: Unit for the colorbar label
+        aoi_color: Color for AOI boundary
+        aoi_linestyle: Line style for AOI boundary
+        aoi_linewidth: Line width for AOI boundary
+        show_grid: Whether to show grid lines
+        show_lon_lat: Whether to show lon/lat labels
+        show_scale_bar: Whether to show scale bar
+        scale_bar_length: Length of scale bar
+        scale_bar_color: Color of scale bar
+        scale_bar_unit: Unit for scale bar
+        bbox_buffer: Buffer around data extent
+        figsize: Figure size in inches
+        dpi: Resolution for saved figure
+        output_dirs: Dictionary of output directories
         
     Returns:
-        str: Path to saved figure
+        Path to saved figure
     """
     logger.info(f"Creating static map for {Name if Name else 'raster'}")
     
-    # Create output directory
-    site_dir = config.OUTPUT_DIR / site_id
-    figures_dir = site_dir / config.FIGURES_DIR / "static"
-    os.makedirs(figures_dir, exist_ok=True)
+    # Set default output directories if not provided
+    if output_dirs is None:
+        site_dir = Path(config.DEFAULT_OUTPUT_DIR) / site_id
+        figures_dir = site_dir / config.DIRECTORY_STRUCTURE["FIGURES"] / config.DIRECTORY_STRUCTURE["STATIC"]
+        os.makedirs(figures_dir, exist_ok=True)
+    else:
+        figures_dir = output_dirs["static_figures"]
     
     # Output path
     feature_name = Name.lower() if Name else Path(raster_path).stem
     output_path = figures_dir / f"{feature_name}_map.svg"
     
     # Set defaults from config if not provided
-    aoi_color = aoi_color or config.PLOT_CONFIG['aoi_color']
-    aoi_linestyle = aoi_linestyle or config.PLOT_CONFIG['aoi_linestyle']
-    aoi_linewidth = aoi_linewidth or config.PLOT_CONFIG['aoi_linewidth']
-    show_grid = show_grid if show_grid is not None else config.PLOT_CONFIG['show_grid']
-    show_lon_lat = show_lon_lat if show_lon_lat is not None else config.PLOT_CONFIG['show_lon_lat']
-    show_scale_bar = show_scale_bar if show_scale_bar is not None else config.PLOT_CONFIG['show_scale_bar']
-    scale_bar_length = scale_bar_length or config.PLOT_CONFIG['scale_bar_length']
-    scale_bar_color = scale_bar_color or config.PLOT_CONFIG['scale_bar_color']
-    scale_bar_unit = scale_bar_unit or config.PLOT_CONFIG['scale_bar_unit']
-    bbox_buffer = bbox_buffer or config.PLOT_CONFIG['bbox_buffer']
-    dpi = dpi or config.PLOT_CONFIG['dpi']
+    vis_config = config.STATIC_VIS
+    aoi_color = aoi_color or vis_config['aoi_color']
+    aoi_linestyle = aoi_linestyle or vis_config['aoi_linestyle']
+    aoi_linewidth = aoi_linewidth or vis_config['aoi_linewidth']
+    show_grid = show_grid if show_grid is not None else vis_config['show_grid']
+    show_lon_lat = show_lon_lat if show_lon_lat is not None else vis_config['show_lon_lat']
+    show_scale_bar = show_scale_bar if show_scale_bar is not None else vis_config['show_scale_bar']
+    scale_bar_length = scale_bar_length or vis_config['scale_bar_length']
+    scale_bar_color = scale_bar_color or vis_config['scale_bar_color']
+    scale_bar_unit = scale_bar_unit or vis_config['scale_bar_unit']
+    bbox_buffer = bbox_buffer or vis_config['bbox_buffer']
+    dpi = dpi or vis_config['dpi']
     
     # Set font properties
-    plt.rcParams['font.family'] = config.PLOT_CONFIG['font']
+    plt.rcParams['font.family'] = vis_config['font']
     
     # Create figure and axis
     fig, ax = plt.subplots(figsize=figsize, subplot_kw={'projection': ccrs.PlateCarree()})
@@ -151,8 +158,8 @@ def plot_static_map(
             gl.right_labels = False
             gl.xformatter = LONGITUDE_FORMATTER
             gl.yformatter = LATITUDE_FORMATTER
-            gl.xlabel_style = {'size': config.PLOT_CONFIG['fontsize_axes']}
-            gl.ylabel_style = {'size': config.PLOT_CONFIG['fontsize_axes']}
+            gl.xlabel_style = {'size': vis_config['fontsize_axes']}
+            gl.ylabel_style = {'size': vis_config['fontsize_axes']}
     
     # Add colorbar
     cbar = fig.colorbar(
@@ -160,17 +167,17 @@ def plot_static_map(
         ax=ax,
         orientation='vertical',
         pad=0.02,
-        fraction=config.PLOT_CONFIG['colorbar_width'],
-        shrink=config.PLOT_CONFIG['colorbar_height']
+        fraction=vis_config['colorbar_width'],
+        shrink=vis_config['colorbar_height']
     )
     
     if Unit:
         cbar.set_label(
             f"{Name} ({Unit})" if Name else Unit,
-            size=config.PLOT_CONFIG['fontsize_colorbar']
+            size=vis_config['fontsize_colorbar']
         )
     
-    cbar.ax.tick_params(labelsize=config.PLOT_CONFIG['fontsize_colorbar'])
+    cbar.ax.tick_params(labelsize=vis_config['fontsize_colorbar'])
     
     # Add scale bar if requested
     if show_scale_bar:
@@ -178,14 +185,14 @@ def plot_static_map(
             ax,
             length=scale_bar_length,
             xy=(0.8, 0.05),
-            fontsize=config.PLOT_CONFIG['fontsize_axes'],
+            fontsize=vis_config['fontsize_axes'],
             color=scale_bar_color,
             unit=scale_bar_unit
         )
     
     # Add title if provided
     if Name:
-        ax.set_title(Name, fontsize=config.PLOT_CONFIG['fontsize_title'])
+        ax.set_title(Name, fontsize=vis_config['fontsize_title'])
     
     # Remove spines
     for spine in ax.spines.values():

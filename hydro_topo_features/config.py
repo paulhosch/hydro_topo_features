@@ -2,17 +2,58 @@
 
 from pathlib import Path
 
-# Processing parameters
-BURN_DEPTH = 20  # meters to burn streams into DEM
+# --------------------------
+# Path configurations
+# --------------------------
+# Default output directory structure
+DEFAULT_OUTPUT_DIR = "outputs"  # Default output directory
+DIRECTORY_STRUCTURE = {
+    "RAW": "raw",         # Original data without processing
+    "INTERIM": "interim", # Intermediate processing results
+    "PROCESSED": "processed", # Final data products
+    "FIGURES": "figures", # Visualizations
+    "STATIC": "static",   # Static visualizations
+    "INTERACTIVE": "interactive" # Interactive visualizations
+}
 
-# Directory structure
-OUTPUT_DIR = Path("outputs")  # base directory for saving outputs
-INTERIM_DIR = "interim"   # directory for intermediate results
-PROCESSED_DIR = "processed"  # directory for final products
-FIGURES_DIR = "figures"  # directory for visualizations
+# --------------------------
+# Data processing parameters
+# --------------------------
+DEM_PROCESSING = {
+    "BURN_DEPTH": 20,  # meters to burn streams into DEM
+    "NODATA_VALUE": 0, # Value for no data
+    "DEFAULT_CRS": "EPSG:4326", # WGS84
+    "RASTERIZE_RESOLUTION": 30, # meters
+}
 
+# OSM water feature tags to extract
+OSM_WATER_TAGS = {
+    "natural": ["water"],
+    "waterway": ["river", "stream", "canal"],
+    "landuse": ["reservoir"]
+}
+
+# Feature computation parameters
+FEATURE_PARAMS = {
+    "HAND": {
+        "min_slope": 0.00001,  # minimum slope for flow direction
+        "routing": "d8"  # flow routing algorithm
+    },
+    "SLOPE": {
+        "units": "degrees",  # or 'percent'
+        "algorithm": "horn"  # Horn's method for slope calculation
+    },
+    "EDTW": {
+        "max_distance": None,  # None for unlimited
+        "units": "meters"
+    }
+}
+
+# --------------------------
+# Visualization parameters
+# --------------------------
 # Static plot configuration
-PLOT_CONFIG = {
+STATIC_VIS = {
     "font": "Arial",
     "fontsize_title": 14,
     "fontsize_axes": 12,
@@ -34,7 +75,7 @@ PLOT_CONFIG = {
 }
 
 # Interactive plot configuration
-INTERACTIVE_CONFIG = {
+INTERACTIVE_VIS = {
     "zoom_start": 9,
     "opacity": 0.6,
     "colorbar_position": "bottomright",
@@ -45,38 +86,17 @@ INTERACTIVE_CONFIG = {
     "layer_control": True
 }
 
-# OSM water feature tags to extract
-OSM_WATER_TAGS = {
-    "natural": ["water"],
-    "waterway": ["river", "stream", "canal"],
-    "landuse": ["reservoir"]
-}
-
-# Raster processing parameters
-RASTERIZE_RESOLUTION = 30  # meters
-NODATA_VALUE = 0
-DEFAULT_CRS = "EPSG:4326"  # WGS84
-
-# Feature computation parameters
-HAND_PARAMS = {
-    "min_slope": 0.00001,  # minimum slope for flow direction
-    "routing": "d8"  # flow routing algorithm
-}
-
-SLOPE_PARAMS = {
-    "units": "degrees",  # or 'percent'
-    "algorithm": "horn"  # Horn's method for slope calculation
-}
-
-EDTW_PARAMS = {
-    "max_distance": None,  # None for unlimited
-    "units": "meters"
-}
-
 # Raster layer visualization settings
-RASTER_VIS_CONFIG = {
+RASTER_VIS = {
     "raw_dem": {
         "name": "Raw DEM",
+        "unit": "m",
+        "vmin": 0,
+        "vmax": 1000,
+        "cmap": "terrain"
+    },
+    "burned_dem": {
+        "name": "Burned DEM",
         "unit": "m",
         "vmin": 0,
         "vmax": 1000,

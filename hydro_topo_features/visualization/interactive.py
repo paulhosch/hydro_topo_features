@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from io import BytesIO
 import base64
+from typing import Dict, List, Optional, Union
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -26,39 +27,45 @@ def plot_interactive_map(
     vmax: list = None,
     cmap: list = None,
     opacity: float = None,
-    zoom_start: int = None
+    zoom_start: int = None,
+    output_dirs: Optional[Dict[str, Path]] = None
 ) -> str:
     """
     Create an interactive map with multiple raster layers.
     
     Args:
-        site_id (str): Unique identifier for the site
-        raster_paths (list): List of paths to raster files
-        aoi_path (str, optional): Path to AOI shapefile/geopackage
-        Name (list, optional): List of names for each raster layer
-        Unit (list, optional): List of units for each raster layer
-        vmin (list, optional): List of minimum values for each raster
-        vmax (list, optional): List of maximum values for each raster
-        cmap (list, optional): List of colormaps for each raster
-        opacity (float, optional): Opacity for raster layers
-        zoom_start (int, optional): Initial zoom level
+        site_id: Unique identifier for the site
+        raster_paths: List of paths to raster files
+        aoi_path: Path to AOI shapefile/geopackage
+        Name: List of names for each raster layer
+        Unit: List of units for each raster layer
+        vmin: List of minimum values for each raster
+        vmax: List of maximum values for each raster
+        cmap: List of colormaps for each raster
+        opacity: Opacity for raster layers
+        zoom_start: Initial zoom level
+        output_dirs: Dictionary of output directories
         
     Returns:
-        str: Path to saved HTML map
+        Path to saved HTML map
     """
     logger.info(f"Creating interactive map for site: {site_id}")
     
-    # Create output directory
-    site_dir = config.OUTPUT_DIR / site_id
-    figures_dir = site_dir / config.FIGURES_DIR / "interactive"
-    os.makedirs(figures_dir, exist_ok=True)
+    # Set default output directories if not provided
+    if output_dirs is None:
+        site_dir = Path(config.DEFAULT_OUTPUT_DIR) / site_id
+        figures_dir = site_dir / config.DIRECTORY_STRUCTURE["FIGURES"] / config.DIRECTORY_STRUCTURE["INTERACTIVE"]
+        os.makedirs(figures_dir, exist_ok=True)
+    else:
+        figures_dir = output_dirs["interactive_figures"]
     
     # Output path
     output_path = figures_dir / "interactive_map.html"
     
-    # Set defaults
-    opacity = opacity or config.INTERACTIVE_CONFIG['opacity']
-    zoom_start = zoom_start or config.INTERACTIVE_CONFIG['zoom_start']
+    # Set defaults from config
+    vis_config = config.INTERACTIVE_VIS
+    opacity = opacity or vis_config['opacity']
+    zoom_start = zoom_start or vis_config['zoom_start']
     
     # Get layer names from file paths
     layer_names = [Path(p).stem for p in raster_paths]
@@ -67,7 +74,7 @@ def plot_interactive_map(
     if Name is None:
         Name = []
         for layer in layer_names:
-            for key, cfg in config.RASTER_VIS_CONFIG.items():
+            for key, cfg in config.RASTER_VIS.items():
                 if key in layer.lower():
                     Name.append(cfg['name'])
                     break
@@ -77,7 +84,7 @@ def plot_interactive_map(
     if Unit is None:
         Unit = []
         for layer in layer_names:
-            for key, cfg in config.RASTER_VIS_CONFIG.items():
+            for key, cfg in config.RASTER_VIS.items():
                 if key in layer.lower():
                     Unit.append(cfg['unit'])
                     break
@@ -87,7 +94,7 @@ def plot_interactive_map(
     if vmin is None:
         vmin = []
         for layer in layer_names:
-            for key, cfg in config.RASTER_VIS_CONFIG.items():
+            for key, cfg in config.RASTER_VIS.items():
                 if key in layer.lower():
                     vmin.append(cfg['vmin'])
                     break
@@ -97,7 +104,7 @@ def plot_interactive_map(
     if vmax is None:
         vmax = []
         for layer in layer_names:
-            for key, cfg in config.RASTER_VIS_CONFIG.items():
+            for key, cfg in config.RASTER_VIS.items():
                 if key in layer.lower():
                     vmax.append(cfg['vmax'])
                     break
@@ -107,7 +114,7 @@ def plot_interactive_map(
     if cmap is None:
         cmap = []
         for layer in layer_names:
-            for key, cfg in config.RASTER_VIS_CONFIG.items():
+            for key, cfg in config.RASTER_VIS.items():
                 if key in layer.lower():
                     cmap.append(cfg['cmap'])
                     break
@@ -135,7 +142,7 @@ def plot_interactive_map(
             bounds = src.bounds
             
             # Handle nodata values
-            data = np.ma.masked_equal(data, src.nodata if src.nodata is not None else config.NODATA_VALUE)
+            data = np.ma.masked_equal(data, src.nodata if src.nodata is not None else config.DEM_PROCESSING["NODATA_VALUE"])
             
             # Get value range
             v_min = vmin[i] if vmin[i] is not None else float(np.nanmin(data))
@@ -203,10 +210,10 @@ def plot_interactive_map(
             aoi,
             name='Area of Interest',
             style_function=lambda x: {
-                'color': config.INTERACTIVE_CONFIG['aoi_color'],
-                'weight': config.INTERACTIVE_CONFIG['aoi_weight'],
-                'dashArray': config.INTERACTIVE_CONFIG['aoi_dash_array'],
-                'fillOpacity': config.INTERACTIVE_CONFIG['aoi_fill_opacity']
+                'color': vis_config['aoi_color'],
+                'weight': vis_config['aoi_weight'],
+                'dashArray': vis_config['aoi_dash_array'],
+                'fillOpacity': vis_config['aoi_fill_opacity']
             }
         ).add_to(m)
     

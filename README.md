@@ -16,8 +16,8 @@ A Python package for extracting hydro-topological features from Digital Elevatio
 1. Create a conda environment:
 
 ```bash
-conda create -n hydro_topo_3 python=3.11
-conda activate hydro_topo_3
+conda create -n hydro_topo_env python=3.11
+conda activate hydro_topo_env
 ```
 
 2. Install dependencies:
@@ -34,41 +34,75 @@ pip install -e .
 
 ## Usage
 
-1. Prepare your data:
+### Command Line Interface
 
-   - Place your DEM tiles in `example_data/dem_tiles/danube/`
-   - Place your AOI shapefile in `example_data/aoi/danube/`
-
-2. Run the test pipeline:
+Use the provided command-line script to run the pipeline:
 
 ```bash
-python test_pipeline.py
+python test_hydro_topo.py --site-id danube \
+                        --aoi-path /path/to/aoi.shp \
+                        --dem-dir /path/to/dem/tiles \
+                        --output-dir outputs \
+                        --static-maps \
+                        --interactive-map
 ```
 
-The script will:
+Arguments:
 
-- Merge and condition DEM tiles
-- Extract water features from OSM
-- Compute HAND, slope, and EDTW
-- Create static and interactive visualizations
+- `--site-id`: Unique identifier for the site
+- `--aoi-path`: Path to AOI shapefile
+- `--dem-dir`: Path to directory containing DEM tiles
+- `--output-dir`: Path for output files (default: 'outputs')
+- `--static-maps`: Create static maps
+- `--interactive-map`: Create interactive map
 
-## Output
+### Python API
 
-Results are saved in the `example_output_dir` directory:
+You can also use the package programmatically in your Python code:
+
+```python
+from hydro_topo_features.pipeline import run_pipeline
+
+# Run the complete pipeline
+outputs = run_pipeline(
+    site_id="danube",
+    aoi_path="/path/to/aoi.shp",
+    dem_tile_folder_path="/path/to/dem/tiles",
+    output_path="outputs",
+    create_static_maps=True,
+    create_interactive_map=True
+)
+
+# Print output paths
+for key, path in outputs.items():
+    print(f"{key}: {path}")
+```
+
+## Output Structure
+
+Results are saved in the output directory with the following structure:
 
 ```
-example_output_dir/
+outputs/
 └── SITE_ID/
+    ├── raw/
+    │   └── raw_dem.tif
     ├── interim/
-    │   ├── raw_dem.tif
+    │   ├── osm_water_vector.gpkg
     │   └── osm_water_raster.tif
     ├── processed/
-    │   ├── osm_hand.tif
+    │   ├── burned_dem.tif
+    │   ├── hand.tif
     │   ├── slope.tif
     │   └── edtw.tif
     └── figures/
         ├── static/
-        │   └── *.svg
+        │   ├── raw_dem_map.svg
+        │   ├── burned_dem_map.svg
+        │   ├── osm_water_map.svg
+        │   ├── hand_map.svg
+        │   ├── slope_map.svg
+        │   └── edtw_map.svg
         └── interactive/
             └── interactive_map.html
 ```
@@ -77,10 +111,88 @@ example_output_dir/
 
 Adjust parameters in `hydro_topo_features/config.py`:
 
-- Processing parameters (e.g., burn depth)
-- Visualization settings
-- OSM water feature tags
-- Output paths and formats
+### Directory Structure
+
+```python
+DIRECTORY_STRUCTURE = {
+    "RAW": "raw",         # Original data without processing
+    "INTERIM": "interim", # Intermediate processing results
+    "PROCESSED": "processed", # Final data products
+    "FIGURES": "figures", # Visualizations
+    "STATIC": "static",   # Static visualizations
+    "INTERACTIVE": "interactive" # Interactive visualizations
+}
+```
+
+### Processing Parameters
+
+```python
+DEM_PROCESSING = {
+    "BURN_DEPTH": 20,  # meters to burn streams into DEM
+    "NODATA_VALUE": 0, # Value for no data
+    "DEFAULT_CRS": "EPSG:4326", # WGS84
+    "RASTERIZE_RESOLUTION": 30, # meters
+}
+```
+
+### Feature Computation Parameters
+
+```python
+FEATURE_PARAMS = {
+    "HAND": {
+        "min_slope": 0.00001,  # minimum slope for flow direction
+        "routing": "d8"  # flow routing algorithm
+    },
+    "SLOPE": {
+        "units": "degrees",  # or 'percent'
+        "algorithm": "horn"  # Horn's method for slope calculation
+    },
+    "EDTW": {
+        "max_distance": None,  # None for unlimited
+        "units": "meters"
+    }
+}
+```
+
+### Visualization Settings
+
+```python
+RASTER_VIS = {
+    "raw_dem": {
+        "name": "Raw DEM",
+        "unit": "m",
+        "vmin": 0,
+        "vmax": 1000,
+        "cmap": "terrain"
+    },
+    "burned_dem": {
+        "name": "Burned DEM",
+        "unit": "m",
+        "vmin": 0,
+        "vmax": 1000,
+        "cmap": "terrain"
+    },
+    # ... other features
+}
+```
+
+## Package Structure
+
+The package is organized into several modules:
+
+- `hydro_topo_features/processing/`: Data processing and feature extraction
+
+  - `prepare_data.py`: Prepares input data (merges DEM tiles, extracts OSM water)
+  - `burn_dem.py`: Burns streams into the DEM
+  - `derive_products.py`: Computes HAND, slope, and EDTW
+
+- `hydro_topo_features/visualization/`: Visualization functions
+
+  - `static.py`: Creates static maps
+  - `interactive.py`: Creates interactive maps
+
+- `hydro_topo_features/pipeline.py`: Main pipeline for end-to-end processing
+- `hydro_topo_features/config.py`: Configuration settings
 
 ## License
 
