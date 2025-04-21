@@ -1,0 +1,19 @@
+name: hydro_topo_2
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8
+  - numpy>=1.26.0 # Required for pysheds compatibility
+  - rasterio
+  - geopandas
+  - matplotlib
+  - folium
+  - cartopy
+  - osmnx
+  - scipy
+  - tqdm
+  - pip
+  - pip:
+      - pysheds
+      - geemap
