@@ -10,6 +10,12 @@ from typing import Dict, List, Tuple, Any
 import geopandas as gpd
 import osmnx as ox
 from .. import config
+from pysheds.grid import Grid
+from shapely.geometry import box
+import rasterio
+from rasterio.features import rasterize
+from rasterio.transform import array_bounds
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +45,7 @@ def prepare_input_data(
     logger.info(f"Preparing input data for site: {site_id}")
     
     # Define output file paths
-    raw_dem_path = output_dirs["raw"] / "raw_dem.tif"
+    raw_dem_path = output_dirs["interim"] / "raw_dem.tif"
     
     interim_dir = output_dirs["interim"]
     osm_vector_path = interim_dir / "osm_water_vector.gpkg"
@@ -51,7 +57,7 @@ def prepare_input_data(
     
     # 2. Extract water features from OpenStreetMap
     logger.info("Extracting water features from OpenStreetMap...")
-    extract_osm_water_features(aoi_path, osm_vector_path)
+    extract_osm_water_features(aoi_path, osm_vector_path, str(raw_dem_path))
     
     # 3. Rasterize water features
     logger.info("Rasterizing water features...")
@@ -109,10 +115,12 @@ def merge_dem_tiles(dem_tile_folder_path: str, output_path: Path) -> None:
             "height": mosaic.shape[1],
             "width": mosaic.shape[2],
             "transform": out_transform,
-            "dtype": "float32",
+            "crs": sources[0].crs,
             "nodata": config.DEM_PROCESSING["NODATA_VALUE"]
         })
         
+        mosaic = mosaic / 100.0
+
         # Write merged DEM
         with rasterio.open(output_path, "w", **out_meta) as dest:
             dest.write(mosaic.astype('float32'))
@@ -128,57 +136,66 @@ def merge_dem_tiles(dem_tile_folder_path: str, output_path: Path) -> None:
         for src in sources:
             src.close()
 
-def extract_osm_water_features(aoi_path: str, output_path: Path) -> None:
+def extract_osm_water_features(aoi_path: str, output_path: Path, dem_path: str) -> None:
     """
     Extract water features from OpenStreetMap within the AOI.
     
     Args:
         aoi_path: Path to AOI shapefile/geopackage
         output_path: Path to output water features
+        dem_path: Path to DEM for grid initialization
     """
     # Create parent directory if it doesn't exist
     os.makedirs(output_path.parent, exist_ok=True)
     
-    # Read AOI
-    aoi = gpd.read_file(aoi_path)
+    grid = Grid.from_raster(dem_path)
+
+    # Read DEM
+    raw_dem = grid.read_raster(dem_path)
+    bbox = box(*raw_dem.bbox)
     
-    # Convert to GeoDataFrame if needed
-    if not isinstance(aoi, gpd.GeoDataFrame):
-        raise ValueError(f"AOI file is not a valid GeoDataFrame: {aoi_path}")
-    
-    # Convert to WGS84 if not already
-    if aoi.crs != "EPSG:4326":
-        aoi = aoi.to_crs("EPSG:4326")
-    
-    # Get bounding box
-    bounds = aoi.total_bounds
-    
-    # Extract water features from OSM
-    tags = config.OSM_WATER_TAGS
-    
-    try:
-        polygons = ox.features.features_from_bbox(
-            north=bounds[3], south=bounds[1],
-            east=bounds[2], west=bounds[0],
-            tags=tags
-        )
-        
-        # Check if any features were found
-        if polygons is None or polygons.empty:
-            logger.warning("No water features found in AOI")
-            # Create empty GeoDataFrame
-            polygons = gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
-        
-        # Clip to AOI
-        water_features = gpd.clip(polygons, aoi)
-        
-        # Save to file
-        water_features.to_file(output_path, driver="GPKG")
-        logger.info(f"Water features saved to: {output_path}")
-        
-    except Exception as e:
-        logger.error(f"Error extracting water features: {str(e)}")
-        raise
+    all_features = []
+
+    # Properly iterate through OSM_WATER_TAGS dictionary
+    for category, tags in config.OSM_WATER_TAGS.items():
+        for tag in tags:
+            tag_dict = {category: tag}
+            try:
+                gdf = ox.features.features_from_polygon(bbox, tag_dict)
+                print(f" Retrieved {len(gdf)} features for {tag_dict}")
+                gdf.set_crs(epsg=4326, inplace=True)
+                all_features.append(gdf)
+            except Exception as e:
+                print(f"⚠️  Failed for tags {tag_dict}: {e}")
+
+    water_features = (
+        gpd.GeoDataFrame(pd.concat(all_features, ignore_index=True), crs="EPSG:4326")
+        if all_features else
+        gpd.GeoDataFrame(columns=['geometry'], crs="EPSG:4326")
+    )
+    # Reproject to match DEM's CRS
+    water_features = water_features.to_crs(raw_dem.crs)
+
+    # === ✂️ Clip water features to DEM grid extent ===
+    # Get the exact bounds from the raw_dem grid
+    height, width = raw_dem.shape
+    bounds = array_bounds(height, width, raw_dem.affine)
+    clip_box = box(*bounds)
+
+    water_clipped = gpd.clip(water_features, clip_box)
+
+    # === 🧹 Filter to valid geometries and essential attributes ===
+    valid_types = ['Polygon', 'MultiPolygon', 'LineString', 'MultiLineString']
+    water_filtered = water_clipped[water_clipped.geometry.geom_type.isin(valid_types)]
+
+    essential_cols = ['geometry', 'waterway', 'natural', 'landuse', 'name']
+    cols_present = [col for col in essential_cols if col in water_filtered.columns]
+    water_clean = water_filtered[cols_present]
+
+    # Save to file
+    water_clean.to_file(output_path, driver="GPKG")
+    logger.info(f"Water features saved to: {output_path}")
+
 
 def rasterize_water_features(dem_path: str, water_path: str, output_path: Path) -> None:
     """

@@ -1,6 +1,9 @@
 """Configuration settings for the hydro-topological features package."""
 
 from pathlib import Path
+import os
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Union
 
 # --------------------------
 # Path configurations
@@ -77,7 +80,7 @@ STATIC_VIS = {
 # Interactive plot configuration
 INTERACTIVE_VIS = {
     "zoom_start": 9,
-    "opacity": 0.6,
+    "opacity": 1,
     "colorbar_position": "bottomright",
     "aoi_color": "red",
     "aoi_weight": 2,
@@ -113,21 +116,53 @@ RASTER_VIS = {
         "name": "HAND",
         "unit": "m",
         "vmin": 0,
-        "vmax": 100,
-        "cmap": "viridis"
+        "vmax": 200,
+        "cmap": "terrain"
     },
     "slope": {
         "name": "Slope",
         "unit": "degrees",
         "vmin": 0,
-        "vmax": 45,
-        "cmap": "YlOrRd"
+        "vmax": 90,
+        "cmap": "viridis"
     },
     "edtw": {
         "name": "EDTW",
         "unit": "m",
         "vmin": 0,
-        "vmax": 1000,
-        "cmap": "plasma"
+        "vmax": 2000,
+        "cmap": "viridis"
     }
-} 
+}
+
+@dataclass
+class Paths:
+    """Configuration class for file paths"""
+    dem: str = None
+    aoi: str = None
+    output_dir: str = DEFAULT_OUTPUT_DIR
+
+@dataclass
+class Config:
+    """Main configuration class for hydro-topographical feature extraction"""
+    paths: Paths = field(default_factory=Paths)
+    output_dir: Path = Path(DEFAULT_OUTPUT_DIR)
+    directory_structure: Dict[str, str] = field(default_factory=lambda: DIRECTORY_STRUCTURE)
+    dem_processing: Dict[str, Any] = field(default_factory=lambda: DEM_PROCESSING)
+    osm_water_tags: Dict[str, List[str]] = field(default_factory=lambda: OSM_WATER_TAGS)
+    feature_params: Dict[str, Dict[str, Any]] = field(default_factory=lambda: FEATURE_PARAMS)
+    static_vis: Dict[str, Any] = field(default_factory=lambda: STATIC_VIS)
+    interactive_vis: Dict[str, Any] = field(default_factory=lambda: INTERACTIVE_VIS)
+    raster_vis: Dict[str, Dict[str, Any]] = field(default_factory=lambda: RASTER_VIS)
+
+    def __post_init__(self):
+        """Initialize the output directory structure"""
+        self.OUTPUT_DIR = self.output_dir
+        # Create other properties for easy access
+        self.DEM_PROCESSING = self.dem_processing
+        self.OSM_WATER_TAGS = self.osm_water_tags
+        self.FEATURE_PARAMS = self.feature_params
+        self.STATIC_VIS = self.static_vis
+        self.INTERACTIVE_VIS = self.interactive_vis
+        self.RASTER_VIS = self.raster_vis
+        self.DIRECTORY_STRUCTURE = self.directory_structure 

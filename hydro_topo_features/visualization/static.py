@@ -35,7 +35,7 @@ def plot_static_map(
     scale_bar_color: str = None,
     scale_bar_unit: str = None,
     bbox_buffer: float = None,
-    figsize: tuple = (12, 12),
+    figsize: tuple = (18, 6),
     dpi: int = None,
     output_dirs: Optional[Dict[str, Path]] = None
 ) -> str:

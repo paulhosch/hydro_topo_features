@@ -13,6 +13,8 @@ import rasterio
 import geopandas as gpd
 import folium
 from folium import plugins
+from folium.raster_layers import ImageOverlay
+from matplotlib import cm
 from .. import config
 
 logger = logging.getLogger(__name__)
@@ -60,32 +62,32 @@ def plot_interactive_map(
         figures_dir = output_dirs["interactive_figures"]
     
     # Output path
-    output_path = figures_dir / "interactive_map.html"
+    output_path = figures_dir / f"{site_id}_interactive_map.html"
     
     # Set defaults from config
     vis_config = config.INTERACTIVE_VIS
     opacity = opacity or vis_config['opacity']
     zoom_start = zoom_start or vis_config['zoom_start']
     
-    # Get layer names from file paths
-    layer_names = [Path(p).stem for p in raster_paths]
-    
-    # Initialize visualization parameters from config
+    # Get layer names from file paths if not provided
     if Name is None:
         Name = []
-        for layer in layer_names:
+        for path in raster_paths:
+            layer_name = Path(path).stem
             for key, cfg in config.RASTER_VIS.items():
-                if key in layer.lower():
+                if key in layer_name.lower():
                     Name.append(cfg['name'])
                     break
             else:
-                Name.append(layer)
+                Name.append(layer_name)
     
+    # Set other defaults if not provided
     if Unit is None:
         Unit = []
-        for layer in layer_names:
+        for path in raster_paths:
+            layer_name = Path(path).stem
             for key, cfg in config.RASTER_VIS.items():
-                if key in layer.lower():
+                if key in layer_name.lower():
                     Unit.append(cfg['unit'])
                     break
             else:
@@ -93,9 +95,10 @@ def plot_interactive_map(
     
     if vmin is None:
         vmin = []
-        for layer in layer_names:
+        for path in raster_paths:
+            layer_name = Path(path).stem
             for key, cfg in config.RASTER_VIS.items():
-                if key in layer.lower():
+                if key in layer_name.lower():
                     vmin.append(cfg['vmin'])
                     break
             else:
@@ -103,9 +106,10 @@ def plot_interactive_map(
     
     if vmax is None:
         vmax = []
-        for layer in layer_names:
+        for path in raster_paths:
+            layer_name = Path(path).stem
             for key, cfg in config.RASTER_VIS.items():
-                if key in layer.lower():
+                if key in layer_name.lower():
                     vmax.append(cfg['vmax'])
                     break
             else:
@@ -113,9 +117,10 @@ def plot_interactive_map(
     
     if cmap is None:
         cmap = []
-        for layer in layer_names:
+        for path in raster_paths:
+            layer_name = Path(path).stem
             for key, cfg in config.RASTER_VIS.items():
-                if key in layer.lower():
+                if key in layer_name.lower():
                     cmap.append(cfg['cmap'])
                     break
             else:
@@ -123,58 +128,65 @@ def plot_interactive_map(
     
     # Get center coordinates from first raster
     with rasterio.open(raster_paths[0]) as src:
-        bounds = src.bounds
-        center_lat = (bounds.bottom + bounds.top) / 2
-        center_lon = (bounds.left + bounds.right) / 2
+        bounds = rasterio.transform.array_bounds(src.height, src.width, src.transform)
+        miny, minx, maxy, maxx = bounds[1], bounds[0], bounds[3], bounds[2]
+        center_lat = (miny + maxy) / 2
+        center_lon = (minx + maxx) / 2
     
     # Create base map
     m = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=zoom_start,
-        control_scale=True,
-        crs='EPSG:4326'  # Use WGS84 for web mapping
+        control_scale=True
     )
     
     # Add each raster layer
     for i, raster_path in enumerate(raster_paths):
         with rasterio.open(raster_path) as src:
             data = src.read(1)
-            bounds = src.bounds
+            bounds = rasterio.transform.array_bounds(src.height, src.width, src.transform)
+            miny, minx, maxy, maxx = bounds[1], bounds[0], bounds[3], bounds[2]
             
             # Handle nodata values
-            data = np.ma.masked_equal(data, src.nodata if src.nodata is not None else config.DEM_PROCESSING["NODATA_VALUE"])
+            nodata = src.nodata if src.nodata is not None else config.DEM_PROCESSING["NODATA_VALUE"]
+            data = np.ma.masked_where(data == nodata, data)
             
             # Get value range
-            v_min = vmin[i] if vmin[i] is not None else float(np.nanmin(data))
-            v_max = vmax[i] if vmax[i] is not None else float(np.nanmax(data))
+            v_min = vmin[i] if i < len(vmin) and vmin[i] is not None else float(np.nanmin(data))
+            v_max = vmax[i] if i < len(vmax) and vmax[i] is not None else float(np.nanmax(data))
+            
+            # Clip values to range
+            clipped_data = np.clip(data, v_min, v_max)
             
             # Normalize data
-            norm_data = np.clip((data - v_min) / (v_max - v_min), 0, 1)
-            norm_data = np.ma.masked_invalid(norm_data)
+            normed_data = (clipped_data - v_min) / (v_max - v_min) if v_max > v_min else np.zeros_like(clipped_data)
             
             # Apply colormap
-            colormap = plt.get_cmap(cmap[i])
-            colored_data = colormap(norm_data, alpha=opacity)
+            cmap_name = cmap[i] if i < len(cmap) else 'terrain'
+            colormap = getattr(cm, cmap_name)
+            colored_data = colormap(normed_data)[:, :, :3]
             colored_data = (colored_data * 255).astype(np.uint8)
             
             # Add layer to map
-            img = folium.raster_layers.ImageOverlay(
-                colored_data,
-                bounds=[[bounds.bottom, bounds.left], [bounds.top, bounds.right]],
-                name=f"{Name[i]}",
+            layer_name = Name[i] if i < len(Name) else f"Layer {i+1}"
+            img = ImageOverlay(
+                image=colored_data,
+                bounds=[[miny, minx], [maxy, maxx]],
                 opacity=opacity,
-                show=True if i == 0 else False  # Only show first layer by default
+                name=layer_name
             )
             img.add_to(m)
             
             # Create colorbar
             fig, ax = plt.subplots(figsize=(1.5, 4))
-            norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max)
-            cbar = fig.colorbar(
-                plt.cm.ScalarMappable(norm=norm, cmap=cmap[i]),
-                cax=ax
-            )
-            cbar.set_label(f"{Name[i]} ({Unit[i]})" if Unit[i] else Name[i])
+            norm = plt.Normalize(vmin=v_min, vmax=v_max)
+            cbar = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap_name), cax=ax)
+            
+            # Add label to colorbar
+            unit_str = Unit[i] if i < len(Unit) else ""
+            if unit_str:
+                cbar.set_label(f"{unit_str}")
+            
             plt.tight_layout()
             
             # Save colorbar to BytesIO
@@ -195,6 +207,7 @@ def plot_interactive_map(
                     padding: 10px;
                     border-radius: 5px;
                     box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+                    <p style="text-align:center; margin:0; font-weight:bold;">{layer_name}</p>
                     <img src="data:image/png;base64,{img_str}" style="height:200px;">
                 </div>
             '''
@@ -221,6 +234,7 @@ def plot_interactive_map(
     folium.LayerControl().add_to(m)
     
     # Save map
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     m.save(output_path)
     logger.info(f"Interactive map saved to: {output_path}")
     return str(output_path) 

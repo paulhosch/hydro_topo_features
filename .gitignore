@@ -45,6 +45,7 @@ outputs/
 *.cpg
 *.gpkg
 cache/
+old_code/
 
 # OS specific
 .DS_Store

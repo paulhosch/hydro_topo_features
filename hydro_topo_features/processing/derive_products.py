@@ -38,7 +38,7 @@ def get_osm_hand(
     hand_path = output_dirs["processed"] / "hand.tif"
     
     # Initialize grid
-    grid = Grid()
+    grid = Grid.from_raster(raw_dem)
     
     # Read raster data
     raw_dem_data = grid.read_raster(raw_dem)
@@ -70,18 +70,23 @@ def get_osm_hand(
     hand = grid.compute_hand(fdir, raw_dem_data, osm_water > 0)
     
     # Save HAND raster
+    output_raster = grid.view(hand)
+    # Get original DEM metadata
     with rasterio.open(raw_dem) as src:
-        meta = src.meta.copy()
-    
-    meta.update({
-        "dtype": "float32",
-        "nodata": config.DEM_PROCESSING["NODATA_VALUE"]
+        dem_meta = src.meta.copy()
+
+    # Update metadata for writing
+    dem_meta.update({
+        'dtype': 'float32',
+        'nodata': np.nan,
+        'count': 1
     })
+
+    # Write DEM to GeoTIFF
+    with rasterio.open(hand_path, 'w', **dem_meta) as dst:
+        dst.write(output_raster.astype(np.float32), 1)
+        logger.info("HAND computation completed")
     
-    with rasterio.open(hand_path, 'w', **meta) as dst:
-        dst.write(hand.astype('float32'), 1)
-    
-    logger.info("HAND computation completed")
     return str(hand_path)
 
 def get_slope(
