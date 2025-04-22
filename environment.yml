@@ -13,6 +13,7 @@ dependencies:
   - osmnx
   - scipy
   - tqdm
+  - geopy>=2.4.0
   - pip
   - pip:
       - pysheds

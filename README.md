@@ -1,73 +1,71 @@
-# Hydro-Topological Features Extraction
+# Hydro-Topo Features
 
-A Python package for extracting hydro-topological features from Digital Elevation Models (DEM) and OpenStreetMap (OSM) water data.
+A Python package for the automated extraction of hydro-topographic features from Digital Elevation Models (DEMs) and OpenStreetMap (OSM) water data. These features are critical for understanding flood susceptibility and analyzing terrain characteristics.
 
-## Features
+[![PyPI Version](https://img.shields.io/pypi/v/hydro-topo-features.svg)](https://pypi.org/project/hydro-topo-features/)
+[![Documentation Status](https://readthedocs.org/projects/hydro-topo-features/badge/?version=latest)](https://hydro-topo-features.readthedocs.io/en/latest/?badge=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- DEM conditioning with stream burning
-- Height Above Nearest Drainage (HAND) computation
-- Slope calculation
-- Euclidean Distance to Water (EDTW) computation
-- Static and interactive visualization of results
-- OpenStreetMap water feature extraction
+## Overview
+
+This package implements a quasi-global, automated workflow for the extraction of three key hydro-topographic variables:
+
+1. **Height Above Nearest Drainage (HAND)**: Vertical distance to the nearest drainage channel
+2. **Euclidean Distance to Waterbody (EDTW)**: Straight-line distance to the nearest water body
+3. **Terrain Slope**: Maximum rate of elevation change
+
+The extracted features provide critical contextual information for flood susceptibility analysis, hydrological modeling, and terrain characterization.
+
+## Key Features
+
+- **DEM Conditioning**: Implemented using the four-step process inspired by MERIT Hydro:
+  - Stream burning (lowering the DEM by 20m along water features)
+  - Pit filling (removing single-cell depressions)
+  - Depression filling (removing multi-cell depressions)
+  - Resolving flats (creating synthetic flow gradients)
+- **Feature Extraction**:
+  - HAND: Height Above Nearest Drainage computation
+  - EDTW: Euclidean Distance to Waterbody computation
+  - Slope: Terrain gradient calculation using Horn's method
+- **Data Sources**:
+  - DEM: Compatible with FathomDEM (1 arc second ~30m grid spacing)
+  - Water features: Automatically extracted from OpenStreetMap (OSM)
+- **Visualization**:
+  - Static maps with customizable parameters
+  - Interactive web maps for exploration
 
 ## Installation
 
-1. Create a conda environment:
+### Using pip
 
 ```bash
+pip install hydro-topo-features
+```
+
+### From source
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/hydro-topo-features.git
+cd hydro-topo-features
+
+# Create a conda environment
 conda create -n hydro_topo_env python=3.11
 conda activate hydro_topo_env
-```
 
-2. Install dependencies:
-
-```bash
-conda install -c conda-forge numpy=1.26 rasterio geopandas pysheds matplotlib folium cartopy geemap osmnx scipy tqdm
-```
-
-3. Install the package in development mode:
-
-```bash
+# Install dependencies and package
 pip install -e .
 ```
 
-## Usage
-
-### Command Line Interface
-
-Use the provided command-line script to run the pipeline:
-
-```bash
-python test_hydro_topo.py --site-id danube \
-                        --aoi-path /path/to/aoi.shp \
-                        --dem-dir /path/to/dem/tiles \
-                        --output-dir outputs \
-                        --static-maps \
-                        --interactive-map
-```
-
-Arguments:
-
-- `--site-id`: Unique identifier for the site
-- `--aoi-path`: Path to AOI shapefile
-- `--dem-dir`: Path to directory containing DEM tiles
-- `--output-dir`: Path for output files (default: 'outputs')
-- `--static-maps`: Create static maps
-- `--interactive-map`: Create interactive map
-
-### Python API
-
-You can also use the package programmatically in your Python code:
+## Quick Start
 
 ```python
 from hydro_topo_features.pipeline import run_pipeline
 
-# Run the complete pipeline
 outputs = run_pipeline(
-    site_id="danube",
-    aoi_path="/path/to/aoi.shp",
-    dem_tile_folder_path="/path/to/dem/tiles",
+    site_id="my_area",
+    aoi_path="path/to/area_of_interest.shp",
+    dem_tile_folder_path="path/to/dem_tiles/",
     output_path="outputs",
     create_static_maps=True,
     create_interactive_map=True
@@ -78,122 +76,58 @@ for key, path in outputs.items():
     print(f"{key}: {path}")
 ```
 
-## Output Structure
+## Command Line Usage
 
-Results are saved in the output directory with the following structure:
-
-```
-outputs/
-└── SITE_ID/
-    ├── raw/
-    │   └── raw_dem.tif
-    ├── interim/
-    │   ├── osm_water_vector.gpkg
-    │   └── osm_water_raster.tif
-    ├── processed/
-    │   ├── burned_dem.tif
-    │   ├── hand.tif
-    │   ├── slope.tif
-    │   └── edtw.tif
-    └── figures/
-        ├── static/
-        │   ├── raw_dem_map.svg
-        │   ├── burned_dem_map.svg
-        │   ├── osm_water_map.svg
-        │   ├── hand_map.svg
-        │   ├── slope_map.svg
-        │   └── edtw_map.svg
-        └── interactive/
-            └── interactive_map.html
+```bash
+python test_hydro_topo.py --site-id my_area \
+                         --aoi-path path/to/area_of_interest.shp \
+                         --dem-dir path/to/dem_tiles/ \
+                         --output-dir outputs \
+                         --static-maps \
+                         --interactive-map
 ```
 
-## Configuration
+## Workflow Details
 
-Adjust parameters in `hydro_topo_features/config.py`:
+1. **DEM Conditioning**
 
-### Directory Structure
+   - Stream burning with a constant depth of 20m along OSM-derived water features
+   - Pit filling to remove single-cell depressions
+   - Depression filling using the Priority-Flood algorithm
+   - Resolving flat areas by creating artificial drainage gradients
 
-```python
-DIRECTORY_STRUCTURE = {
-    "RAW": "raw",         # Original data without processing
-    "INTERIM": "interim", # Intermediate processing results
-    "PROCESSED": "processed", # Final data products
-    "FIGURES": "figures", # Visualizations
-    "STATIC": "static",   # Static visualizations
-    "INTERACTIVE": "interactive" # Interactive visualizations
-}
-```
+2. **Flow Direction Calculation**
 
-### Processing Parameters
+   - Uses the deterministic D8 method for flow direction computation
 
-```python
-DEM_PROCESSING = {
-    "BURN_DEPTH": 20,  # meters to burn streams into DEM
-    "NODATA_VALUE": 0, # Value for no data
-    "DEFAULT_CRS": "EPSG:4326", # WGS84
-    "RASTERIZE_RESOLUTION": 30, # meters
-}
-```
+3. **Feature Extraction**
 
-### Feature Computation Parameters
+   - HAND: Traces flow paths downstream to calculate elevation difference
+   - Slope: Computes maximum rate of elevation change in degrees
+   - EDTW: Calculates Euclidean distance to nearest water cell
 
-```python
-FEATURE_PARAMS = {
-    "HAND": {
-        "min_slope": 0.00001,  # minimum slope for flow direction
-        "routing": "d8"  # flow routing algorithm
-    },
-    "SLOPE": {
-        "units": "degrees",  # or 'percent'
-        "algorithm": "horn"  # Horn's method for slope calculation
-    },
-    "EDTW": {
-        "max_distance": None,  # None for unlimited
-        "units": "meters"
-    }
-}
-```
+4. **Visualization**
+   - Creates static maps with proper scaling and colormaps
+   - Generates interactive web maps for data exploration
 
-### Visualization Settings
+## Documentation
 
-```python
-RASTER_VIS = {
-    "raw_dem": {
-        "name": "Raw DEM",
-        "unit": "m",
-        "vmin": 0,
-        "vmax": 1000,
-        "cmap": "terrain"
-    },
-    "burned_dem": {
-        "name": "Burned DEM",
-        "unit": "m",
-        "vmin": 0,
-        "vmax": 1000,
-        "cmap": "terrain"
-    },
-    # ... other features
-}
-```
-
-## Package Structure
-
-The package is organized into several modules:
-
-- `hydro_topo_features/processing/`: Data processing and feature extraction
-
-  - `prepare_data.py`: Prepares input data (merges DEM tiles, extracts OSM water)
-  - `burn_dem.py`: Burns streams into the DEM
-  - `derive_products.py`: Computes HAND, slope, and EDTW
-
-- `hydro_topo_features/visualization/`: Visualization functions
-
-  - `static.py`: Creates static maps
-  - `interactive.py`: Creates interactive maps
-
-- `hydro_topo_features/pipeline.py`: Main pipeline for end-to-end processing
-- `hydro_topo_features/config.py`: Configuration settings
+For comprehensive documentation, please visit:
+[https://hydro-topo-features.readthedocs.io/](https://hydro-topo-features.readthedocs.io/)
 
 ## License
 
-MIT License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Citation
+
+If you use this package in your research, please cite:
+
+```
+@software{hydro_topo_features,
+  author = {Hosch, Paul},
+  title = {Hydro-Topo Features: A Python package for extracting hydro-topographic features},
+  year = {2023},
+  url = {https://github.com/yourusername/hydro-topo-features}
+}
+```

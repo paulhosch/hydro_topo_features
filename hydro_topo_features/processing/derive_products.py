@@ -7,6 +7,7 @@ import numpy as np
 import rasterio
 from pysheds.grid import Grid
 from scipy.ndimage import distance_transform_edt
+from geopy.distance import geodesic
 from typing import Dict
 from .. import config
 
@@ -161,28 +162,74 @@ def get_edtw(
     # Output path
     edtw_path = output_dirs["processed"] / "edtw.tif"
     
-    # Read water raster
-    with rasterio.open(osm_water_raster) as src:
-        water = src.read(1)
-        meta = src.meta.copy()
-        pixel_size = src.res[0]  # assuming square pixels
-    
-    # Compute EDTW
-    logger.info("Computing distance transform")
-    edtw_params = config.FEATURE_PARAMS["EDTW"]
-    edtw = distance_transform_edt(water == 0) * pixel_size
-    
-    if edtw_params["max_distance"] is not None:
-        edtw = np.minimum(edtw, edtw_params["max_distance"])
-    
-    # Save EDTW raster
-    meta.update({
-        "dtype": "float32",
-        "nodata": config.DEM_PROCESSING["NODATA_VALUE"]
-    })
-    
-    with rasterio.open(edtw_path, 'w', **meta) as dst:
-        dst.write(edtw.astype('float32'), 1)
-    
-    logger.info("EDTW computation completed")
-    return str(edtw_path) 
+    try:
+        # Read water raster
+        with rasterio.open(osm_water_raster) as src:
+            transform = src.transform
+            crs = src.crs
+            water = src.read(1)
+            nodata = src.nodata
+
+            # Handle nodata values if present
+            if nodata is not None:
+                water = np.ma.masked_equal(water, nodata)
+                water = np.ma.filled(water, 0)  # Fill nodata with 0 (non-water)
+
+            # Get pixel width and height in degrees
+            pixel_width_deg = abs(transform.a)
+            pixel_height_deg = abs(transform.e)
+
+            # Center of the raster to estimate latitude
+            center_lat = src.bounds.top - (src.height // 2) * pixel_height_deg
+            center_lon = src.bounds.left + (src.width // 2) * pixel_width_deg
+
+            # Approximate meters per pixel using geodesic distance
+            pixel_width_m = geodesic(
+                (center_lat, center_lon),
+                (center_lat, center_lon + pixel_width_deg)
+            ).meters
+
+            pixel_height_m = geodesic(
+                (center_lat, center_lon),
+                (center_lat + pixel_height_deg, center_lon)
+            ).meters
+
+            # Use average for sampling parameter
+            pixel_size = (pixel_height_m + pixel_width_m) / 2
+            logger.info(f"Pixel size: approximately {pixel_size:.2f} meters")
+
+        # Create water mask (1 for water, 0 for non-water)
+        # OSM water raster has value 1 for water, 0 for non-water
+        water_mask = (water == 1).astype(np.uint8)
+        
+        # Compute EDTW (distance from each non-water pixel to nearest water pixel)
+        logger.info("Computing distance transform")
+        # Note: distance_transform_edt computes distance from 0s to nearest 1s
+        # So we need to invert the mask (1 - water_mask)
+        edtw = distance_transform_edt(1 - water_mask) * pixel_size
+        
+        # Get max value for informational purposes
+        max_dist = np.max(edtw)
+        logger.info(f"Maximum distance to water: {max_dist:.2f} meters")
+        
+        # Save distance raster to file
+        with rasterio.open(
+            edtw_path,
+            'w',
+            driver='GTiff',
+            height=edtw.shape[0],
+            width=edtw.shape[1],
+            count=1,
+            dtype='float32',
+            crs=crs,
+            transform=transform,
+            nodata=np.finfo('float32').max
+        ) as dst:
+            dst.write(edtw.astype(np.float32), 1)
+        
+        logger.info("EDTW computation completed")
+        return str(edtw_path)
+        
+    except Exception as e:
+        logger.error(f"Error computing EDTW: {str(e)}")
+        raise 
