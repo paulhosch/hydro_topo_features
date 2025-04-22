@@ -46,7 +46,6 @@ pip install hydro-topo-features
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hydro-topo-features.git
 cd hydro-topo-features
 
 # Create a conda environment
@@ -65,7 +64,7 @@ from hydro_topo_features.pipeline import run_pipeline
 outputs = run_pipeline(
     site_id="my_area",
     aoi_path="path/to/area_of_interest.shp",
-    dem_tile_folder_path="path/to/dem_tiles/",
+    dem_tile_folder_path="path/to/dem_tiles/", (.tif)
     output_path="outputs",
     create_static_maps=True,
     create_interactive_map=True
@@ -127,7 +126,7 @@ If you use this package in your research, please cite:
 @software{hydro_topo_features,
   author = {Hosch, Paul},
   title = {Hydro-Topo Features: A Python package for extracting hydro-topographic features},
-  year = {2023},
+  year = {2025},
   url = {https://github.com/yourusername/hydro-topo-features}
 }
 ```

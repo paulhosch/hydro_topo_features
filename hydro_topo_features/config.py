@@ -128,7 +128,7 @@ RASTER_VIS = {
     },
     "slope": {
         "name": "Slope",
-        "unit": "degrees",
+        "unit": "°",
         "vmin": 0,
         "vmax": 90,
         "cmap": "viridis"

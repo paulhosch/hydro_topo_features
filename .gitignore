@@ -34,17 +34,7 @@ ENV/
 *.swo
 
 # Project specific
-example_data/
-example_output_dir/
-outputs/
-data/
-*.tif
-*.shp
-*.shx
-*.dbf
-*.prj
-*.cpg
-*.gpkg
+output/
 cache/
 old_code/
 

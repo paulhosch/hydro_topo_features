@@ -13,11 +13,11 @@ setup(
     long_description_content_type="text/markdown",
     author="Paul Hosch",
     author_email="paul.hosch@rwth-aachen.de",
-    url="https://github.com/yourusername/hydro-topo-features",
+    url="https://github.com/paulhosch/hydro-topo-features",
     project_urls={
         "Documentation": "https://hydro-topo-features.readthedocs.io/",
-        "Source Code": "https://github.com/yourusername/hydro-topo-features",
-        "Bug Tracker": "https://github.com/yourusername/hydro-topo-features/issues",
+        "Source Code": "https://github.com/paulhosch/hydro-topo-features",
+        "Bug Tracker": "https://github.com/paulhosch/hydro-topo-features/issues",
     },
     packages=find_packages(),
     install_requires=[
