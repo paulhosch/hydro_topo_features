@@ -37,6 +37,7 @@ ENV/
 example_data/
 example_output_dir/
 outputs/
+data/
 *.tif
 *.shp
 *.shx

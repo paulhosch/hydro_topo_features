@@ -174,7 +174,7 @@ def plot_static_map(
     # Ensure a tick at the max value
     if vmin is not None and vmax is not None:
         # Create tick locations with first tick at vmin and last tick at vmax
-        tick_count = 4  # Default to 5 ticks or use parameter
+        tick_count = 5  
         ticks = np.linspace(vmin, vmax, tick_count)
         cbar.set_ticks(ticks)
         
