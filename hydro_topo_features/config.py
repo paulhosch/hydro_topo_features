@@ -6,6 +6,13 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Union
 
 # --------------------------
+# General settings
+# --------------------------
+# Project name and version
+PROJECT_NAME = "Hydro-Topo Features"
+PROJECT_VERSION = "0.1.0"
+
+# --------------------------
 # Path configurations
 # --------------------------
 # Default output directory structure
@@ -58,19 +65,19 @@ FEATURE_PARAMS = {
 # Static plot configuration
 STATIC_VIS = {
     "font": "Arial",
-    "fontsize_title": 14,
-    "fontsize_axes": 12,
-    "fontsize_legend": 10,
-    "fontsize_colorbar": 10,
-    "colorbar_width": 0.05,
-    "colorbar_height": 0.9,
-    "aoi_color": "#797979",
+    "fontsize_title": 16,
+    "fontsize_axes": 16,
+    "fontsize_legend": 16,
+    "fontsize_colorbar": 16,
+    "colorbar_width": 0.1,
+    "colorbar_height": 1,
+    "aoi_color": "#d45e00",
     "aoi_linestyle": "--",
-    "aoi_linewidth": 4,
+    "aoi_linewidth": 3,
     "show_grid": True,
     "show_lon_lat": True,
     "show_scale_bar": True,
-    "scale_bar_length": 10,
+    "scale_bar_length": 20,
     "scale_bar_color": "black",
     "scale_bar_unit": "km",
     "dpi": 300,
@@ -145,12 +152,21 @@ class Paths:
 @dataclass
 class Config:
     """Main configuration class for hydro-topographical feature extraction"""
+    # Project information
+    project_name: str = PROJECT_NAME
+    project_version: str = PROJECT_VERSION
+    
+    # Paths and directory structure
     paths: Paths = field(default_factory=Paths)
     output_dir: Path = Path(DEFAULT_OUTPUT_DIR)
     directory_structure: Dict[str, str] = field(default_factory=lambda: DIRECTORY_STRUCTURE)
+    
+    # Processing parameters
     dem_processing: Dict[str, Any] = field(default_factory=lambda: DEM_PROCESSING)
     osm_water_tags: Dict[str, List[str]] = field(default_factory=lambda: OSM_WATER_TAGS)
     feature_params: Dict[str, Dict[str, Any]] = field(default_factory=lambda: FEATURE_PARAMS)
+    
+    # Visualization parameters
     static_vis: Dict[str, Any] = field(default_factory=lambda: STATIC_VIS)
     interactive_vis: Dict[str, Any] = field(default_factory=lambda: INTERACTIVE_VIS)
     raster_vis: Dict[str, Dict[str, Any]] = field(default_factory=lambda: RASTER_VIS)
@@ -158,6 +174,9 @@ class Config:
     def __post_init__(self):
         """Initialize the output directory structure"""
         self.OUTPUT_DIR = self.output_dir
+        self.PROJECT_NAME = self.project_name
+        self.PROJECT_VERSION = self.project_version
+        
         # Create other properties for easy access
         self.DEM_PROCESSING = self.dem_processing
         self.OSM_WATER_TAGS = self.osm_water_tags

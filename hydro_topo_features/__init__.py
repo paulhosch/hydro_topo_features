@@ -13,10 +13,14 @@ For detailed usage, see the README.md file.
 """
 
 from . import config
+
+# Import project name and version from config
+__project_name__ = config.PROJECT_NAME
+__version__ = config.PROJECT_VERSION
+__author__ = 'Paul Hosch'
+__email__ = 'paul.hosch@outlook.com'
+
+# Import modules
 from . import processing
 from . import visualization
-from .pipeline import run_pipeline
-
-__version__ = '0.1.0'
-__author__ = 'Paul Hosch'
-__email__ = 'paul.hosch@outlook.com' 
+from .pipeline import run_pipeline 

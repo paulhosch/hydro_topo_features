@@ -1,0 +1,12 @@
+numpy>=1.26.0
+rasterio
+geopandas
+matplotlib
+folium
+cartopy
+osmnx
+scipy
+tqdm
+geopy>=2.4.0
+pysheds
+geemap 

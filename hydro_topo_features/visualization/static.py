@@ -160,6 +160,8 @@ def plot_static_map(
             gl.yformatter = LATITUDE_FORMATTER
             gl.xlabel_style = {'size': vis_config['fontsize_axes']}
             gl.ylabel_style = {'size': vis_config['fontsize_axes']}
+            gl.xlocator = mticker.MaxNLocator(nbins=3)
+            gl.ylocator = mticker.MaxNLocator(nbins=3)
     
     # Add colorbar
     cbar = fig.colorbar(
@@ -168,8 +170,16 @@ def plot_static_map(
         orientation='vertical',
         pad=0.02,
         fraction=vis_config['colorbar_width'],
-        shrink=vis_config['colorbar_height']
-    )
+        shrink=vis_config['colorbar_height']    )
+    # Ensure a tick at the max value
+    if vmin is not None and vmax is not None:
+        # Create tick locations with first tick at vmin and last tick at vmax
+        tick_count = 4  # Default to 5 ticks or use parameter
+        ticks = np.linspace(vmin, vmax, tick_count)
+        cbar.set_ticks(ticks)
+        
+        # Optional: Format tick labels if needed
+        # cbar.set_ticklabels([f"{t:.2f}" for t in ticks])
     
     if Unit:
         cbar.set_label(
@@ -185,6 +195,7 @@ def plot_static_map(
             ax,
             length=scale_bar_length,
             xy=(0.8, 0.05),
+            linewidth=2,
             fontsize=vis_config['fontsize_axes'],
             color=scale_bar_color,
             unit=scale_bar_unit
