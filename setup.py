@@ -7,7 +7,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="hydro-topo-features",
-    version="0.1.2",
+    version="0.1.3",
     description="Extract hydro-topographic features from DEM and OSM data",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -34,6 +34,13 @@ setup(
         "tqdm>=4.64.0",
         "geopy>=2.4.0"
     ],
+    extras_require={
+        "docs": [
+            "sphinx>=4.0.0",
+            "sphinx_rtd_theme>=1.0.0",
+            "sphinx-autodoc-typehints",
+        ],
+    },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",

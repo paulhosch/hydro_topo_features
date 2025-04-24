@@ -37,8 +37,8 @@ The extracted features provide critical contextual information for flood suscept
 ## Methodology
 
 <figure style="text-align: center;">
-  <img src="pipeline.png" alt="Hydro-Topo Features Processing Pipeline" width="40%">
-  <figcaption><em>Figure 1:</em> : Quasi Global and Automatic Pipeline To Compute the Hydro Topographic Descriptors: (X1) HAND, (X2) Slope and (X3) Euclidean Distance To Water, using (A1) FathomDEM and (A2) OpenStreetMap Water as Input Data. A (B) Conditioned DEM is computed to ensure drainage and an accurate (C) Flow Direction approximation.  (for full sized and labeled maps the reader is referred to the Appendix) </figcaption>
+  <img src="pipeline.png" alt="Hydro-Topo Features Processing Pipeline" width="80%">
+  <figcaption><em>Figure 1:</em> Quasi Global and Automatic Pipeline To Compute the Hydro Topographic Descriptors: (X1) HAND, (X2) Slope and (X3) Euclidean Distance To Water, using (A1) FathomDEM and (A2) OpenStreetMap Water as Input Data. A (B) Conditioned DEM is computed to ensure drainage and an accurate (C) Flow Direction approximation.</figcaption>
 </figure>
 
 ### Data Sources
@@ -171,60 +171,52 @@ If you use this package in your research, please cite:
 }
 ```
 
-## References
-
-Barnes, R., Lehman, C., & Mulla, D. (2014). Priority-flood: An optimal depression-filling and watershed-labeling algorithm for digital elevation models. Computers & Geosciences, 62, 117-127.
-
-Barnes, R., Lehman, C., & Mulla, D. (2015). An efficient assignment of drainage direction over flat surfaces in raster digital elevation models. Computers & Geosciences, 77, 138-148.
-
-Bartos, M. (2018). PySheds: Simple and efficient hydrologic terrain analysis in Python. GitHub Repository. https://github.com/mdbartos/pysheds
-
-Chen, L., Gong, G., Li, X., & Jiang, C. (2024). Optimizing threshold selection for river network extraction from high-resolution DEMs. Journal of Hydrology, 628, 130308.
-
-ESA. (2021). Copernicus Digital Elevation Model. European Space Agency. https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
-
-O'Callaghan, J. F., & Mark, D. M. (1984). The extraction of drainage networks from digital elevation data. Computer Vision, Graphics, and Image Processing, 28(3), 323-344.
-
-OpenStreetMap. (2023). OpenStreetMap Data. https://www.openstreetmap.org
-
-Rennó, C. D., Nobre, A. D., Cuartas, L. A., Soares, J. V., Hodnett, M. G., Tomasella, J., & Waterloo, M. J. (2008). HAND, a new terrain descriptor using SRTM-DEM: Mapping terra-firme rainforest environments in Amazonia. Remote Sensing of Environment, 112(9), 3469-3481.
-
-Uhe, P., Pickering, M., Smith, A., Smith, N., Schumann, G., Sampson, C., Wing, O., & Bates, P. (2025). FathomDEM: A global bare-earth digital elevation model. [Publication in preparation]
-
-Yamazaki, D., Ikeshima, D., Sosa, J., Bates, P. D., Allen, G. H., & Pavelsky, T. M. (2019). MERIT Hydro: A high-resolution global hydrography map based on latest topography dataset. Water Resources Research, 55(6), 5053-5073.
-
 ## Future Improvements
-
-While the current implementation provides robust hydro-topographic features, several enhancements could be considered for future versions:
 
 ### Slope Calculation
 
 The current implementation calculates slope using Horn's method, which offers a good balance between computational efficiency and accuracy. However, this approach has some limitations:
 
-- **Scale Dependency**: Horn's algorithm is sensitive to the DEM resolution and may not effectively represent terrain characteristics across different scales.
 - **Smoothing Effect**: The algorithm has an inherent smoothing effect that can underestimate slope in areas with high terrain variability.
-- **Directional Bias**: The 8-direction approach may not fully capture slope characteristics in all directions, especially in complex terrain.
+- **Directional Bias**: Horn's gradient estimation may miss subtle directional variations, particularly in terrains with complex anisotropic features.
 
 Future improvements could include:
 
-- Implementing multi-scale slope calculation methods that adjust for DEM resolution
-- Adding Evans-Young or 4th-order polynomial fitting methods which may provide more accurate slope estimates in specific terrain conditions
-- Incorporating curvature calculations to better represent terrain morphology
-- Providing optional directional slope calculations (e.g., downslope in the flow direction) which may be more relevant for hydrological applications
+- richdem, WhiteboxTools for more advanced slope calculations.
 
 ### EDTW Computation
 
 The current Euclidean Distance to Waterbody (EDTW) implementation calculates the straight-line distance to the nearest water cell, which doesn't account for flow dynamics:
 
 - **Flow Direction Ignorance**: The straight-line approach doesn't consider that water actually moves along flow paths governed by terrain, not in straight lines.
-- **Hydraulic Connectivity**: Two points with the same Euclidean distance to water may have very different hydrological connections to that water body.
-- **Barrier Effects**: Physical barriers (like ridges) between a point and water body are not considered in a simple Euclidean calculation.
+- **Terrain Barriers**: Terrain barriers (like ridges) between a point and water body are not considered in a simple Euclidean calculation.
 
-Potential enhancements include:
+Potential enhancements could include:
 
 - Implementing a flow-path distance calculation that traces along the actual flow direction network
-- Developing a "hydraulic distance" metric that combines Euclidean distance with flow connectivity information
-- Adding a weighted distance calculation that accounts for terrain factors like slope and barriers
-- Incorporating travel-time estimates that consider how quickly water would reach a point from the nearest waterbody during flooding events
 
-These improvements would provide more hydrologically meaningful distance metrics that better represent the relationship between terrain points and water bodies.
+## References
+
+### Scientific Publications
+
+Barnes, R., Lehman, C., & Mulla, D. (2014). Priority-flood: An optimal depression-filling and watershed-labeling algorithm for digital elevation models. _Computers & Geosciences, 62_, 117-127.
+
+Barnes, R., Lehman, C., & Mulla, D. (2015). An efficient assignment of drainage direction over flat surfaces in raster digital elevation models. _Computers & Geosciences, 77_, 138-148.
+
+Chen, L., Gong, G., Li, X., & Jiang, C. (2024). Optimizing threshold selection for river network extraction from high-resolution DEMs. _Journal of Hydrology, 628_, 130308.
+
+ESA. (2021). Copernicus Digital Elevation Model. European Space Agency. https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model
+
+O'Callaghan, J. F., & Mark, D. M. (1984). The extraction of drainage networks from digital elevation data. _Computer Vision, Graphics, and Image Processing, 28(3)_, 323-344.
+
+OpenStreetMap. (2023). OpenStreetMap Data. https://www.openstreetmap.org
+
+Rennó, C. D., Nobre, A. D., Cuartas, L. A., Soares, J. V., Hodnett, M. G., Tomasella, J., & Waterloo, M. J. (2008). HAND, a new terrain descriptor using SRTM-DEM: Mapping terra-firme rainforest environments in Amazonia. _Remote Sensing of Environment, 112(9)_, 3469-3481.
+
+Uhe, P., Pickering, M., Smith, A., Smith, N., Schumann, G., Sampson, C., Wing, O., & Bates, P. (2025). FathomDEM: A global bare-earth digital elevation model. [Publication in preparation]
+
+Yamazaki, D., Ikeshima, D., Sosa, J., Bates, P. D., Allen, G. H., & Pavelsky, T. M. (2019). MERIT Hydro: A high-resolution global hydrography map based on latest topography dataset. _Water Resources Research, 55(6)_, 5053-5073.
+
+### Software and Tools
+
+Bartos, M. (2018). PySheds: Simple and efficient hydrologic terrain analysis in Python. GitHub Repository. https://github.com/mdbartos/pysheds
