@@ -67,6 +67,13 @@ Table of Contents
 Technical Background
 -------------------
 
+.. figure:: images/pipeline.png
+   :alt: Hydro-Topo Features Processing Pipeline
+   :align: center
+   :width: 100%
+   
+   *Hydro-Topo Features Processing Pipeline*
+
 Terrain and hydrological characteristics significantly influence the flood susceptibility of a location. For example, low-lying areas near water bodies are inherently more prone to flooding than elevated and steep regions. Digital Elevation Models (DEMs) and hydrological network data provide critical contextual information enabling classifiers to establish associations between physiographic conditions and flooding potential.
 
 This package implements an automated workflow for the extraction of three key hydro-topographic variables:

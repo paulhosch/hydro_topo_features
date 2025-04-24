@@ -88,6 +88,8 @@ python test_hydro_topo.py --site-id my_area \
 
 ## Workflow Details
 
+![Hydro-Topo Features Processing Pipeline](pipeline.png)
+
 1. **DEM Conditioning**
 
    - Stream burning with a constant depth of 20m along OSM-derived water features
