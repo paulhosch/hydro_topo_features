@@ -149,6 +149,24 @@ python test_hydro_topo.py --site-id my_area \
                          --interactive-map
 ```
 
+## Interactive Map Example
+
+The package can generate interactive web-based visualizations of hydro-topographic features. Below is an example of the Danube River basin:
+
+**[View Interactive Danube Basin Map](https://paulhosch.github.io/hydro_topo_features/maps/danube_interactive_map.html)**
+
+This interactive Folium map allows you to:
+
+- Toggle between different layers (HAND, Slope, EDTW)
+- Zoom in/out to explore detailed terrain features
+- Click on locations to see precise values
+- Use the layer control to adjust transparency
+
+<figure style="text-align: center;">
+  <img src="examples/danube_map_preview.png" alt="Danube Interactive Map Preview" width="80%">
+  <figcaption><em>Figure 2:</em> Preview of the interactive Danube basin visualization with HAND, Slope, and EDTW layers.</figcaption>
+</figure>
+
 ## Documentation
 
 For comprehensive documentation, please visit:
