@@ -171,6 +171,17 @@ If you use this package in your research, please cite:
 }
 ```
 
+## AI Assistance Statement
+
+This package and its documentation were developed with assistance from AI tools, including:
+
+- **Claude 3.7 Sonnet**: Used for code review, documentation improvement, and troubleshooting
+- **GitHub Copilot**: Assisted with routine code implementation and optimization
+
+The core scientific methodology, algorithms, and domain expertise remain human-directed, with AI serving as a development and documentation accelerator.
+
+We believe in transparency regarding AI usage while maintaining scientific rigor through human oversight and verification of all produced content.
+
 ## Future Improvements
 
 ### Slope Calculation

@@ -64,6 +64,7 @@ Table of Contents
    methodology
    examples/index
    api/index
+   ai_attribution
    references
    
 Technical Background

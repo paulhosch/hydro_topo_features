@@ -115,7 +115,7 @@ def get_slope(
     grid = Grid()
     dem = grid.read_raster(raw_dem)
     
-    # Compute slope
+    # Compute slope Horn’s Method (1981)
     logger.info("Computing slope values")
     slope_params = config.FEATURE_PARAMS["SLOPE"]
     if slope_params["algorithm"] == 'horn':
