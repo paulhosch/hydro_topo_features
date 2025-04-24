@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any, Union
 # --------------------------
 # Project name and version
 PROJECT_NAME = "Hydro-Topo Features"
-PROJECT_VERSION = "0.1.0"
+PROJECT_VERSION = "0.1.2"
 
 # --------------------------
 # Path configurations

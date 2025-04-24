@@ -4,10 +4,21 @@ include requirements.txt
 include environment.yml
 include setup_and_test.sh
 include docs/requirements.txt
+include pipeline.png
+include pyproject.toml
 
-recursive-include docs *.rst *.py
+recursive-include docs *.rst *.py *.png *.jpg *.jpeg *.svg
 recursive-include examples *.py *.ipynb *.rst
 
+# Include test files
+recursive-include tests *.py
+
+# Exclude generated and temporary files
 global-exclude *.py[cod] __pycache__ *.so .DS_Store
+global-exclude *.egg-info/*
+global-exclude .coverage .pytest_cache
 prune docs/_build
 prune .git
+prune data
+prune output
+prune cache
