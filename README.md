@@ -37,7 +37,7 @@ The extracted features provide critical contextual information for flood suscept
 ## Methodology
 
 <figure style="text-align: center;">
-  <img src="pipeline.png" alt="Hydro-Topo Features Processing Pipeline" width="40%">
+  <img src="pipeline.png" alt="Hydro-Topo Features Processing Pipeline" width="60%">
   <figcaption><em>Figure 1:</em> : Quasi Global and Automatic Pipeline To Compute the Hydro Topographic Descriptors: (X1) HAND, (X2) Slope and (X3) Euclidean Distance To Water, using (A1) FathomDEM and (A2) OpenStreetMap Water as Input Data. A (B) Conditioned DEM is computed to ensure drainage and an accurate (C) Flow Direction approximation.  (for full sized and labeled maps the reader is referred to the Appendix) </figcaption>
 </figure>
 
