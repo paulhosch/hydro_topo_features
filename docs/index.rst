@@ -31,7 +31,7 @@ Key Features
 
 - **DEM Conditioning**: Implemented using the four-step process inspired by MERIT Hydro:
   
-  - Stream burning (lowering the DEM by 20m along water features)
+  - Stream burning (lowering the DEM by 20m along OSM water features)
   - Pit filling (removing single-cell depressions)
   - Depression filling (removing multi-cell depressions)
   - Resolving flats (creating synthetic flow gradients)
@@ -61,8 +61,10 @@ Table of Contents
 
    getting_started/index
    usage/index
+   methodology
    examples/index
    api/index
+   references
    
 Technical Background
 -------------------
@@ -72,7 +74,7 @@ Technical Background
    :align: center
    :width: 100%
    
-   *Hydro-Topo Features Processing Pipeline*
+   *Quasi Global and Automatic Pipeline To Compute the Hydro Topographic Descriptors: (X1) HAND, (X2) Slope and (X3) Euclidean Distance To Water, using (A1) FathomDEM and (A2) OpenStreetMap Water as Input Data. A (B) Conditioned DEM is computed to ensure drainage and an accurate (C) Flow Direction approximation.*
 
 Terrain and hydrological characteristics significantly influence the flood susceptibility of a location. For example, low-lying areas near water bodies are inherently more prone to flooding than elevated and steep regions. Digital Elevation Models (DEMs) and hydrological network data provide critical contextual information enabling classifiers to establish associations between physiographic conditions and flooding potential.
 

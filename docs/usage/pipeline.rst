@@ -11,7 +11,7 @@ Pipeline Overview
    :align: center
    :width: 100%
    
-   *Hydro-Topo Features Processing Pipeline*
+   *Quasi Global and Automatic Pipeline To Compute the Hydro Topographic Descriptors: (X1) HAND, (X2) Slope and (X3) Euclidean Distance To Water, using (A1) FathomDEM and (A2) OpenStreetMap Water as Input Data. A (B) Conditioned DEM is computed to ensure drainage and an accurate (C) Flow Direction approximation.*
 
 The workflow consists of the following main steps:
 
